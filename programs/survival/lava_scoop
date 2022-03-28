@@ -1,0 +1,61 @@
+// When player right clicks with an empty bucket on obsidian block;
+// it disappear and give player an lava bucket;
+// works only with survival player
+
+// stay loaded
+__config() -> (
+   m(
+      l('stay_loaded','true')
+   )
+);
+
+global_ticked = {};
+
+__on_player_right_clicks_block(player, item_tuple, hand, block, face, hitvec) ->
+(
+	if (!(block ~ 'obsidian'), return());
+    if(query(player, 'holds', hand):0 == 'bucket' && !has(global_ticked, player), 
+        (
+            scoop_liquid(player, hand);;
+			__open_sesame(block, pos(block), 32);
+            global_ticked:player = null;
+            schedule(0,_() -> global_ticked = {});
+        );
+    );
+);
+
+__open_sesame(block_type, position, ttl) ->
+(
+	if (ttl < 1, return(0));
+	set(position, 'air');
+);
+	
+scoop_liquid(player, hand) -> (
+    [item, count, data] = query(player, 'holds', hand);
+    hand_id = if(hand == 'offhand', 40, hand == 'mainhand', player~'selected_slot');
+    print(hand_id);
+    if(item == 'bucket',
+        (
+            if((empty_slot = inventory_find(player, null)) >= 36, empty_slot = null);
+            if(query(player, 'gamemode_id') == 0,
+                (
+                    inventory_set(player, hand_id, count-1, item, data);
+                    if(empty_slot != null,
+                        (
+                            inventory_set(player, empty_slot, 1, 'lava_bucket');
+                        );
+                        else,
+                            spawn('item', pos(player), str('{Item:{id:"minecraft:lava_bucket",Count:1b}}'));
+                    );
+                ),
+                query(player, 'gamemode_id') == 1 && inventory_find(player, 'lava_bucket') == null,
+                    if(empty_slot != null,
+                        (
+                            inventory_set(player, empty_slot, 1, 'lava_bucket');
+                        )
+                    );
+            );
+            sound('item.bucket.fill_lava', pos(player));
+        );
+    );
+);
